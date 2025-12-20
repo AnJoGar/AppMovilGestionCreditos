@@ -5,8 +5,8 @@ class DetalleClienteDTO {
   String telefono;
   String direccion;
   String? fotoClienteUrl;
-  String? fotoContrato;
-  String? fotoCelularEntregadoUrl;
+  //String? fotoContrato;
+  //String? fotoCelularEntregadoUrl;
 
   DetalleClienteDTO({
     this.id = 0,
@@ -15,8 +15,8 @@ class DetalleClienteDTO {
     required this.telefono,
     required this.direccion,
     this.fotoClienteUrl,
-    this.fotoContrato,
-    this.fotoCelularEntregadoUrl,
+    //this.fotoContrato,
+    //this.fotoCelularEntregadoUrl,
   });
 
  // ------------------- FROM JSON -------------------
@@ -28,8 +28,8 @@ class DetalleClienteDTO {
       telefono: json['Telefono'] ?? '',
       direccion: json['Direccion'] ?? '',
       fotoClienteUrl: json['FotoClienteUrl'],
-      fotoContrato: json['FotoContrato'],
-      fotoCelularEntregadoUrl: json['FotoCelularEntregadoUrl'],
+      //fotoContrato: json['FotoContrato'],
+      //fotoCelularEntregadoUrl: json['FotoCelularEntregadoUrl'],
     );
   }
 
@@ -41,7 +41,7 @@ class DetalleClienteDTO {
         'Telefono': telefono,
         'Direccion': direccion,
         'FotoClienteUrl': fotoClienteUrl,
-        'FotoContrato': fotoContrato,
-        'FotoCelularEntregadoUrl': fotoCelularEntregadoUrl,
+        //'FotoContrato': fotoContrato,
+        //'FotoCelularEntregadoUrl': fotoCelularEntregadoUrl,
       };
 }

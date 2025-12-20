@@ -1,17 +1,19 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/register_provider.dart';
-import '../../models/credito_dto.dart'; // <--- IMPORT DTO
+import '../../models/credito_dto.dart';
 import '../../data/services/auth_service.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/photo_upload_card.dart'; // IMPORTANTE
 import '../../services/UsuarioRegistroData.dart';
 import '../../models/cliente_dto.dart';
 import '../../models/enviar_codigo_dto.dart';
 import '../../services/ValidarCuenta.dart';
-import '../../services/usuario_service.dart';
-import 'dart:convert';
+import '../../services/firebase_service.dart'; // IMPORTANTE
+
 class CreditDataScreen extends StatefulWidget {
   const CreditDataScreen({super.key});
 
@@ -20,8 +22,7 @@ class CreditDataScreen extends StatefulWidget {
 }
 
 class _CreditDataScreenState extends State<CreditDataScreen> {
-
-    UsuarioRegistroData registroData = UsuarioRegistroData();
+  UsuarioRegistroData registroData = UsuarioRegistroData();
   final _precioCtrl = TextEditingController();
   final _entradaCtrl = TextEditingController();
   final _cuotasCtrl = TextEditingController();
@@ -32,6 +33,11 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
   double _montoFinanciar = 0;
   double _valorCuota = 0;
   DateTime _proximaCuota = DateTime.now();
+
+  // VARIABLES PARA LAS FOTOS
+  File? _fotoContrato;
+  File? _fotoCelular;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -74,91 +80,107 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
       context: context, initialDate: _fechaPago, firstDate: DateTime.now().toUtc(), lastDate: DateTime(2030),
     );
     if (picked != null) {
-      setState(() {
-        _fechaPago = picked;
-        _calcularValores();
-      });
+      setState(() { _fechaPago = picked; _calcularValores(); });
     }
   }
 
- void _finalizarRegistro() async {
-  // Validar campos básicos
-  if (_precioCtrl.text.isEmpty || _cuotasCtrl.text.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Define precio y cuotas')),
-    );
-    return;
-  }
+  void _finalizarRegistro() async {
+    if (_precioCtrl.text.isEmpty || _cuotasCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Define precio y cuotas')));
+      return;
+    }
 
-  // Mostrar carga
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
-  );
+    // 1. VALIDAR FOTOS
+    if (_fotoContrato == null || _fotoCelular == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes subir fotos de Contrato y Celular'), backgroundColor: Colors.red));
+      return;
+    }
 
-  // Guardar crédito en Provider
-  final credito = CreditoDTO(
-    montoTotal: double.parse(_precioCtrl.text),
-    entrada: double.tryParse(_entradaCtrl.text) ?? 0,
-    plazoCuotas: int.parse(_cuotasCtrl.text),
-    frecuenciaPago: _frecuencia,
-    diaPago: _fechaPago,
-    valorPorCuota: _valorCuota,
-    montoPendiente: _montoFinanciar,
-    proximaCuota: _proximaCuota,
-    proximaCuotaStr: DateFormat('yyyy-MM-dd').format(_proximaCuota),
-    estado: 'Pendiente',
-    fechaCreacion: DateTime.now().toUtc(),
-  );
+    setState(() => _isUploading = true);
 
-  final registerProvider = context.read<RegisterProvider>();
-  registerProvider.setCredito(credito);
-
-  // Construir DTO completo del usuario
-  final usuarioFinal = registerProvider.getUsuarioFinal();
-
-  final correoUser = usuarioFinal.correo;
-  if (correoUser == null || correoUser.isEmpty) {
-    Navigator.pop(context); // Cierra loading
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Correo del usuario no disponible')),
-    );
-    return;
-  }
-
-  // Enviar código de verificación
-  final validarCuenta = ValidarCuenta();
-  final enviado = await validarCuenta.enviarCodigoCompleto(usuarioFinal);
-
-  Navigator.pop(context); // Cierra loading
-
-  if (enviado != null) {
-    // Todo correcto, navegar a verificación
-    context.push('/verify-otp', extra: correoUser);
-  } else {
-    // Mostrar error
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Error al enviar correo. Verifica tu conexión o datos.'),
-        backgroundColor: Colors.red,
+    // Dialogo de Carga
+    showDialog(
+      context: context, barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: const Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Subiendo evidencias...", style: TextStyle(fontWeight: FontWeight.bold))]),
+        ),
       ),
     );
+
+    try {
+      final firebaseService = FirebaseService();
+
+      // 2. SUBIR EVIDENCIAS
+      String? urlContrato = await firebaseService.uploadImage(_fotoContrato!, 'contratos');
+      String? urlCelular = await firebaseService.uploadImage(_fotoCelular!, 'celulares');
+
+      if (urlContrato == null || urlCelular == null) throw Exception("Error al subir evidencias");
+
+      if (mounted) Navigator.pop(context); // Cierra loading de fotos
+
+      // 3. CREAR DTO
+      final credito = CreditoDTO(
+        montoTotal: double.parse(_precioCtrl.text),
+        entrada: double.tryParse(_entradaCtrl.text) ?? 0,
+        plazoCuotas: int.parse(_cuotasCtrl.text),
+        frecuenciaPago: _frecuencia,
+        diaPago: _fechaPago,
+        valorPorCuota: _valorCuota,
+        montoPendiente: _montoFinanciar,
+        proximaCuota: _proximaCuota,
+        proximaCuotaStr: DateFormat('yyyy-MM-dd').format(_proximaCuota),
+        estado: 'Pendiente',
+        fechaCreacion: DateTime.now().toUtc(),
+        // ASIGNAMOS LAS URLS
+        fotoContratoUrl: urlContrato,
+        fotoCelularUrl: urlCelular,
+      );
+
+      final registerProvider = context.read<RegisterProvider>();
+      registerProvider.setCredito(credito);
+
+      // 4. ENVIAR CODIGO DE VERIFICACIÓN
+      final usuarioFinal = registerProvider.getUsuarioFinal();
+      final correoUser = usuarioFinal.correo;
+
+      if (correoUser == null || correoUser.isEmpty) {
+        setState(() => _isUploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Correo no disponible')));
+        return;
+      }
+
+      final validarCuenta = ValidarCuenta();
+      final enviado = await validarCuenta.enviarCodigoCompleto(usuarioFinal);
+
+      setState(() => _isUploading = false);
+
+      if (enviado != null) {
+        context.push('/verify-otp', extra: correoUser);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al enviar correo.'), backgroundColor: Colors.red));
+      }
+
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    }
   }
-}
-
-
-
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Paso 4: Crédito')),
+      appBar: AppBar(title: const Text('Paso 4: Crédito y Evidencias')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            // --- RESUMEN ---
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: theme.primaryColor, borderRadius: BorderRadius.circular(15)),
@@ -176,6 +198,8 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
               ),
             ),
             const SizedBox(height: 30),
+
+            // --- CAMPOS ---
             CustomTextField(label: 'Precio Equipo (Total)', controller: _precioCtrl, keyboardType: TextInputType.number, icon: Icons.smartphone),
             const SizedBox(height: 15),
             CustomTextField(label: 'Entrada (Pago Inicial)', controller: _entradaCtrl, keyboardType: TextInputType.number, icon: Icons.monetization_on),
@@ -195,8 +219,30 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.withOpacity(0.5))),
               onTap: _seleccionarFecha,
             ),
+
+            // --- SECCIÓN EVIDENCIAS (NUEVO) ---
+            const SizedBox(height: 30),
+            const Divider(),
+            const Text("EVIDENCIA DIGITAL", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 15),
+            Row(
+              children: [
+                Expanded(child: PhotoUploadCard(label: 'Foto Contrato *', onImageSelected: (f) => _fotoContrato = f)),
+                const SizedBox(width: 10),
+                Expanded(child: PhotoUploadCard(label: 'Foto Celular *', onImageSelected: (f) => _fotoCelular = f)),
+              ],
+            ),
+
             const SizedBox(height: 40),
-            SizedBox(width: double.infinity, height: 55, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: _finalizarRegistro, child: const Text('FINALIZAR Y VERIFICAR', style: TextStyle(fontSize: 16)))),
+            SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    onPressed: _finalizarRegistro,
+                    child: const Text('FINALIZAR Y VERIFICAR', style: TextStyle(fontSize: 16))
+                )
+            ),
           ],
         ),
       ),

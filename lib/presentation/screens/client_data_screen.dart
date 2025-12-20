@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/register_provider.dart';
-import '../../models/detalle_cliente_dto.dart'; // <--- IMPORT DTO
+import '../../models/detalle_cliente_dto.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/photo_upload_card.dart';
 import '../../services/UsuarioRegistroData.dart';
@@ -19,7 +19,7 @@ class ClientDataScreen extends StatefulWidget {
 
 class _ClientDataScreenState extends State<ClientDataScreen> {
   bool _isUploading = false;
-    UsuarioRegistroData registroData = UsuarioRegistroData();
+  UsuarioRegistroData registroData = UsuarioRegistroData();
   final _formKey = GlobalKey<FormState>();
   final _cedulaCtrl = TextEditingController();
   final _nombreCtrl = TextEditingController();
@@ -27,8 +27,7 @@ class _ClientDataScreenState extends State<ClientDataScreen> {
   final _direccionCtrl = TextEditingController();
 
   File? _fotoCliente;
-  File? _fotoCelular;
-  File? _fotoContrato;
+  // SE ELIMINARON: _fotoCelular y _fotoContrato de esta pantalla
 
   @override
   void initState() {
@@ -43,24 +42,24 @@ class _ClientDataScreenState extends State<ClientDataScreen> {
     super.dispose();
   }
 
-    void _onNextPressed() async  {
+  void _onNextPressed() async {
     // 1. Validar Inputs
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // 2. Validar TODAS las Fotos (Corrección)
-    if (_fotoCliente == null || _fotoCelular == null || _fotoContrato == null) {
+    // 2. Validar Foto Cliente (Única obligatoria aquí)
+    if (_fotoCliente == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Debes subir las 3 fotos obligatorias (Cliente, Celular y Contrato)'),
+            content: Text('Debes subir la foto del Cliente (Selfie)'),
             backgroundColor: Colors.red
         ),
       );
       return;
     }
 
-    // 3. Mostrar diálogo de carga MEJORADO
+    // 3. Mostrar diálogo de carga
     setState(() => _isUploading = true);
 
     showDialog(
@@ -70,22 +69,17 @@ class _ClientDataScreenState extends State<ClientDataScreen> {
         canPop: false,
         child: Dialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), // Bordes redondeados
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 25, horizontal: 20),
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Se ajusta al contenido
+              mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(), // Usará el color primario de tu tema
+                CircularProgressIndicator(),
                 SizedBox(height: 20),
                 Text(
-                  "Subiendo imágenes a la nube...",
-                  style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w500,
-                      decoration: TextDecoration.none // Quita cualquier subrayado por seguridad
-                  ),
+                  "Subiendo foto de perfil...",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -95,118 +89,47 @@ class _ClientDataScreenState extends State<ClientDataScreen> {
       ),
     );
 
-try {
-    final firebaseService = FirebaseService();
+    try {
+      final firebaseService = FirebaseService();
 
-    // 4. Subir imágenes a Firebase Storage
-    final String? urlCliente =
-        await firebaseService.uploadImage(_fotoCliente!, 'clientes');
-    final String? urlCelular =
-        await firebaseService.uploadImage(_fotoCelular!, 'celulares');
-    final String? urlContrato =
-        await firebaseService.uploadImage(_fotoContrato!, 'contratos');
+      // 4. Subir SOLO foto cliente
+      final String? urlCliente = await firebaseService.uploadImage(_fotoCliente!, 'clientes');
 
-    // Cerrar diálogo
-    if (mounted) Navigator.pop(context);
-    setState(() => _isUploading = false);
+      // Cerrar diálogo
+      if (mounted) Navigator.pop(context);
+      setState(() => _isUploading = false);
 
-    // 5. Verificar errores
-    if (urlCliente == null || urlCelular == null || urlContrato == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al subir imágenes. Verifica tu internet.'),
-          backgroundColor: Colors.red,
-        ),
+      if (urlCliente == null) {
+        throw Exception("Error al subir la imagen.");
+      }
+
+      // 5. Crear DTO Limpio
+      final detalle = DetalleClienteDTO(
+        numeroCedula: _cedulaCtrl.text,
+        nombreApellidos: _nombreCtrl.text,
+        telefono: _telefonoCtrl.text,
+        direccion: _direccionCtrl.text,
+        fotoClienteUrl: urlCliente,
+        // fotoCelularEntregadoUrl y fotoContrato ya no van aquí
       );
-      return;
+
+      // 6. Guardar en Provider
+      final registerProvider = context.read<RegisterProvider>();
+      registerProvider.setDetalleCliente(detalle);
+
+      // 7. Guardar local
+      registroData.cliente ??= ClienteDTO();
+      registroData.cliente!.detalleCliente = detalle;
+
+      // 8. Navegar
+      if (mounted) context.push('/store-data');
+
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      setState(() => _isUploading = false);
+      print("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
-
-    // 6. Crear DTO CON URLs REALES
-    final detalle = DetalleClienteDTO(
-      numeroCedula: _cedulaCtrl.text,
-      nombreApellidos: _nombreCtrl.text,
-      telefono: _telefonoCtrl.text,
-      direccion: _direccionCtrl.text,
-      fotoClienteUrl: urlCliente,
-      fotoCelularEntregadoUrl: urlCelular,
-      fotoContrato: urlContrato,
-    );
-
-    // 7. Guardar en Provider
-    final registerProvider = context.read<RegisterProvider>();
-    registerProvider.setDetalleCliente(detalle);
-
-    // 8. Guardar también en tu objeto local
-    registroData.cliente ??= ClienteDTO();
-    registroData.cliente!.detalleCliente = detalle;
-
-    // --- Debug ---
-    print("=== Datos del Cliente ===");
-    print("Cédula: ${detalle.numeroCedula}");
-    print("Nombre: ${detalle.nombreApellidos}");
-    print("Foto Cliente: ${detalle.fotoClienteUrl}");
-    print("Foto Celular: ${detalle.fotoCelularEntregadoUrl}");
-    print("Foto Contrato: ${detalle.fotoContrato}");
-    print("=========================");
-
-    // 9. Navegar
-    if (mounted) context.push('/store-data');
-
-  } catch (e) {
-    if (mounted) Navigator.pop(context);
-    setState(() => _isUploading = false);
-    print("Error crítico Firebase: $e");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ocurrió un error al procesar el registro'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-
-
-
-
-
-
-/*
-
-
-    final registerProvider = context.read<RegisterProvider>();
-final detalle = DetalleClienteDTO(
-  numeroCedula: _cedulaCtrl.text,
-  nombreApellidos: _nombreCtrl.text,
-  telefono: _telefonoCtrl.text,
-  direccion: _direccionCtrl.text,
-  fotoClienteUrl: "https://github.com/AnJoGar?tab=repositories",
-  fotoCelularEntregadoUrl: "https://github.com/AnJoGar?tab=repositories",
-  fotoContrato: "https://github.com/AnJoGar?tab=repositories",
-);
-// Guardar el detalle del cliente en registroData
-  registroData.cliente ??= ClienteDTO(); // Crear cliente si no existe
-registroData.cliente!.detalleCliente = detalle;
-registerProvider.setDetalleCliente(detalle);
-// Debug
-print("Correo desde Provider: ${registerProvider.usuario.correo}");
-// Si quieres guardar las fotos en el DTO, podrías hacer algo así
-//registroData.cliente!.detalleCliente!.fotoClienteUrl = _fotoCliente;
-//registroData.cliente!.detalleCliente!.fotoCelularEntregadoUrl = _fotoCelular;
-//registroData.cliente!.detalleCliente!.fotoContrato = _fotoContrato;
-
-  // --- Console log ---
-  print("=== Datos del Cliente Registrado ===");
-  print("Cédula: ${detalle.numeroCedula}");
-  print("Nombre: ${detalle.nombreApellidos}");
-  print("Teléfono: ${detalle.telefono}");
-  print("Dirección: ${detalle.direccion}");
-  print("Foto Cliente URL: ${detalle.fotoClienteUrl}");
-  print("Foto Celular URL: ${detalle.fotoCelularEntregadoUrl}");
-  print("Foto Contrato URL: ${detalle.fotoContrato}");
-  print("=== Fin de Datos ===");
-    context.push('/store-data');
-    */
   }
 
   @override
@@ -227,32 +150,24 @@ print("Correo desde Provider: ${registerProvider.usuario.correo}");
                 validator: (v) => (v!.isEmpty || v.length != 10) ? 'Debe tener 10 dígitos' : null,
               ),
               const SizedBox(height: 15),
-              CustomTextField(
-                label: 'Nombres y Apellidos', controller: _nombreCtrl, icon: Icons.person,
-                validator: (v) => v!.isEmpty ? 'Requerido' : null,
-              ),
+              CustomTextField(label: 'Nombres y Apellidos', controller: _nombreCtrl, icon: Icons.person, validator: (v) => v!.isEmpty ? 'Requerido' : null),
               const SizedBox(height: 15),
-              CustomTextField(
-                label: 'Teléfono', controller: _telefonoCtrl, keyboardType: TextInputType.phone, icon: Icons.phone,
-                validator: (v) => (v!.isEmpty || v.length != 10) ? 'Debe tener 10 dígitos' : null,
-              ),
+              CustomTextField(label: 'Teléfono', controller: _telefonoCtrl, keyboardType: TextInputType.phone, icon: Icons.phone, validator: (v) => (v!.isEmpty || v.length != 10) ? '10 dígitos' : null),
               const SizedBox(height: 15),
-              CustomTextField(
-                label: 'Dirección / Sector', controller: _direccionCtrl, icon: Icons.location_on,
-                validator: (v) => v!.isEmpty ? 'Requerido' : null,
-              ),
+              CustomTextField(label: 'Dirección / Sector', controller: _direccionCtrl, icon: Icons.location_on, validator: (v) => v!.isEmpty ? 'Requerido' : null),
+
               const SizedBox(height: 30),
-              const Text('Evidencia Digital', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+              const Text('Evidencia de Identidad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
               const SizedBox(height: 15),
-              Row(
-                children: [
-                  Expanded(child: PhotoUploadCard(label: 'Foto Cliente *', onImageSelected: (f) => _fotoCliente = f)),
-                  const SizedBox(width: 15),
-                  Expanded(child: PhotoUploadCard(label: 'Foto Celular', onImageSelected: (f) => _fotoCelular = f)),
-                ],
+
+              // SOLO WIDGET DE FOTO CLIENTE
+              Center(
+                child: SizedBox(
+                  width: 200,
+                  child: PhotoUploadCard(label: 'Foto del cliente', onImageSelected: (f) => _fotoCliente = f),
+                ),
               ),
-              const SizedBox(height: 15),
-              PhotoUploadCard(label: 'Foto Contrato', onImageSelected: (f) => _fotoContrato = f),
+
               const SizedBox(height: 40),
               SizedBox(width: double.infinity, height: 55, child: ElevatedButton(onPressed: _onNextPressed, child: const Text('SIGUIENTE: DATOS TIENDA'))),
             ],

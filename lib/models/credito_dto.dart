@@ -1,15 +1,13 @@
-
 import 'package:intl/intl.dart';
 
 class CreditoDTO {
   int id;
   double montoTotal;
-  double entrada; // <--- Agregado
+  double entrada;
   int plazoCuotas;
   String frecuenciaPago;
   DateTime diaPago;
-  
-  
+
   double? valorPorCuota;
   double? montoPendiente;
 
@@ -18,6 +16,10 @@ class CreditoDTO {
   String? estado;
   int clienteId;
   DateTime? fechaCreacion;
+
+  // --- NUEVOS CAMPOS ---
+  String? fotoContratoUrl;
+  String? fotoCelularUrl;
 
   CreditoDTO({
     this.id = 0,
@@ -33,9 +35,11 @@ class CreditoDTO {
     this.estado,
     this.clienteId = 0,
     this.fechaCreacion,
+    this.fotoContratoUrl, // Nuevo
+    this.fotoCelularUrl,  // Nuevo
   });
 
- // ------------------- FROM JSON -------------------
+  // ------------------- FROM JSON -------------------
   factory CreditoDTO.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic date) {
       if (date is String) return DateTime.parse(date);
@@ -57,25 +61,29 @@ class CreditoDTO {
       estado: json['Estado'],
       clienteId: json['ClienteId'] ?? 0,
       fechaCreacion: parseDate(json['FechaCreacion']),
+      // Mapeo de nuevos campos
+      fotoContratoUrl: json['FotoContratoUrl'],
+      fotoCelularUrl: json['FotoCelularUrl'],
     );
   }
 
   // ------------------- TO JSON -------------------
   Map<String, dynamic> toJson() => {
-       'Id': id,
-      'Entrada': entrada,
-      'MontoTotal': montoTotal,
-      'MontoPendiente': montoPendiente ?? 0,
-      'PlazoCuotas': plazoCuotas,
-      'FrecuenciaPago': frecuenciaPago,
-      'DiaPago': diaPago.toUtc().toIso8601String(),
-      'ValorPorCuota': valorPorCuota ?? 0,
-      'ProximaCuota':  proximaCuota?.toUtc().toIso8601String(),
-      'ProximaCuotaStr': proximaCuotaStr ?? '',
-      'Estado': estado ?? '',
-      'FechaCreacion': fechaCreacion?.toUtc().toIso8601String(),
-      'ClienteId': clienteId,
-         
-   
-      };
+    'Id': id,
+    'Entrada': entrada,
+    'MontoTotal': montoTotal,
+    'MontoPendiente': montoPendiente ?? 0,
+    'PlazoCuotas': plazoCuotas,
+    'FrecuenciaPago': frecuenciaPago,
+    'DiaPago': diaPago.toUtc().toIso8601String(),
+    'ValorPorCuota': valorPorCuota ?? 0,
+    'ProximaCuota':  proximaCuota?.toUtc().toIso8601String(),
+    'ProximaCuotaStr': proximaCuotaStr ?? '',
+    'Estado': estado ?? '',
+    'FechaCreacion': fechaCreacion?.toUtc().toIso8601String(),
+    'ClienteId': clienteId,
+    // Envío de nuevos campos
+    'FotoContratoUrl': fotoContratoUrl,
+    'FotoCelularUrl': fotoCelularUrl,
+  };
 }
