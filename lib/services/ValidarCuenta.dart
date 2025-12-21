@@ -6,6 +6,7 @@ import '../models/usuario_dto.dart';
 
 class ValidarCuenta {
   final String baseUrl = "https://apicredito2-8.onrender.com/api";
+   final String baseUrl1 = "https://apicredito2-8.onrender.com/api";
 Future<VerificarDTO?> verificarCuenta(VerificarDTO dto) async {
   final url = Uri.parse('$baseUrl/EmailValidation/ValidarCodigo');
   print('--- FORGOT PASSWORD ---');
@@ -119,7 +120,7 @@ Future<bool?> enviarCodigoCompleto(UsuarioDTO dto) async {
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(dto.toJson()), // <-- enviamos TODO el usuario
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 30));
 
     print('Código de respuesta: ${response.statusCode}');
     print('Cuerpo de respuesta: ${response.body}');

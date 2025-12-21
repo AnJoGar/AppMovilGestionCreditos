@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:trabajo1/models/usuario_dto.dart';
 import 'package:trabajo1/models/ClienteMostrarDTO.dart';
-
+import 'package:trabajo1/models/DetalleCLientePostDTO.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class UsuarioService {
   final String baseUrl = "https://apicredito2-8.onrender.com/api";
-
+ final String baseUrl1 = "https://apicredito2-8.onrender.com/api";
  
  final storage = const FlutterSecureStorage();
  ClienteMostrarDTO? _cacheCliente;
@@ -192,4 +192,42 @@ class UsuarioService {
     _cacheCliente = null;
   }
 
+
+
+Future<bool> actualizarDetalleClienteFotos(
+    DetalleClientePostDTO detalle) async {
+  final token = await storage.read(key: 'jwt_token');
+
+  if (token == null) {
+    throw Exception("Token no encontrado. Usuario no autenticado.");
+  }
+
+  final url = Uri.parse('$baseUrl/DetalleCliente/EditarFotosJWT');
+
+  final response = await http.put(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode(detalle.toJson()),
+  );
+
+  print("Respuesta API EditarFotosJWT: ${response.body}");
+
+  if (response.statusCode == 200) {
+    final decoded = jsonDecode(response.body);
+
+    if (decoded['status'] == true) {
+      // 🔄 Limpia caché del cliente porque cambió su info
+      clearCache();
+      return true;
+    } else {
+      throw Exception(decoded['msg']);
+    }
+  } else {
+    throw Exception(
+        "Error al actualizar detalle cliente: ${response.statusCode}");
+  }
+}
 }

@@ -27,7 +27,7 @@ class _StoreDataScreenState extends State<StoreDataScreen> {
   final _direccionCtrl = TextEditingController();
   final _codigoTiendaCtrl = TextEditingController(); // <--- NUEVO CAMPO
 
-  File? _logoTienda; // <--- Para el logo
+//  File? _logoTienda; // <--- Para el logo
 
   @override
   void initState() {
@@ -80,16 +80,6 @@ print("Tienda nombre: ${registerProvider.tienda!.fechaRegistro}");
           key: _formKey,
           child: Column(
             children: [
-              // --- SECCIÓN LOGO (NUEVA) ---
-              Center(
-                child: SizedBox(
-                  width: 170,
-                  child: PhotoUploadCard(
-                    label: 'Logo Tienda (Opcional)',
-                    onImageSelected: (file) => _logoTienda = file,
-                  ),
-                ),
-              ),
               const SizedBox(height: 20),
 
               CustomTextField(

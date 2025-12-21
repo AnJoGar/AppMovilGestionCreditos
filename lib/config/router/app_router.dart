@@ -11,6 +11,7 @@ import '../../presentation/screens/credit_data_screen.dart';
 import '../../presentation/screens/forgot_password_screen.dart';
 import '../../presentation/screens/reset_password_screen.dart';
 import '../../presentation/screens/home_screen.dart';
+import '../../presentation/screens/client_data_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -65,24 +66,28 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/new-credit-request', // Mantenemos el path que usabas en home
       builder: (context, state) {
-        final clienteId = state.extra as int;
-        return ClientUpdateScreen(clienteId: clienteId);
+        //  final clienteId = state.extra as int;
+        //return ClientUpdateScreen(clienteId: clienteId);
+        return const ClientUpdateScreen();
+
       },
     ),
     GoRoute(
       path: '/new-credit-store',
       builder: (context, state) {
-        final clienteId = state.extra as int;
-        return NewCreditStoreScreen(clienteId: clienteId);
+        //final clienteId = state.extra as int;
+        return NewCreditStoreScreen();
       },
     ),
     GoRoute(
       path: '/new-credit-financial',
       builder: (context, state) {
-        final Map<String, int> args = state.extra as Map<String, int>;
+        final tiendaId = state.extra as int;
+        //final Map<String, int> args = state.extra as Map<String, int>;
         return NewCreditFinancialScreen(
-          clienteId: args['clienteId']!,
-          tiendaId: args['tiendaId']!,
+          // clienteId: args['clienteId']!,
+          // tiendaId: args['tiendaId']!,
+            tiendaId: tiendaId
         );
       },
     ),

@@ -2,28 +2,39 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:intl/intl.dart';
 import '../../../models/credito_dto.dart';
+import '../../../services/creditoMostrarHome.dart';
 import '../../../presentation/widgets/custom_text_field.dart';
+import '../../../models/CreditoMostrarDTO.dart';
 import '../../../presentation/widgets/photo_upload_card.dart'; // Importar
 import '../../../services/firebase_service.dart'; // Importar
 
 class NewCreditFinancialScreen extends StatefulWidget {
-  final int clienteId;
+  //final int clienteId;
   final int tiendaId;
 
-  const NewCreditFinancialScreen({super.key, required this.clienteId, required this.tiendaId});
+  const NewCreditFinancialScreen({super.key, required this.tiendaId,
+    /*, required this.clienteId, required this.tiendaId*/});
 
   @override
   State<NewCreditFinancialScreen> createState() => _NewCreditFinancialScreenState();
 }
 
 class _NewCreditFinancialScreenState extends State<NewCreditFinancialScreen> {
+
+  final creditoMostrarHome creditoHomeService = creditoMostrarHome();
+
   final _formKey = GlobalKey<FormState>();
 
   final _montoCtrl = TextEditingController();
   final _entradaCtrl = TextEditingController();
-  final _plazoCtrl = TextEditingController();
 
+  // 1. ELIMINAMOS _plazoCtrl y AGREGAMOS variable para el combo
+  int? _plazoSeleccionado;
+  final List<int> _opcionesCuotas = [3, 6, 9, 12, 15, 18, 24];
+
+  DateTime _proximaCuota = DateTime.now();
   String? _frecuenciaSeleccionada;
 
   // VARIABLES DE EVIDENCIA (Contrato y Celular)
@@ -43,14 +54,16 @@ class _NewCreditFinancialScreenState extends State<NewCreditFinancialScreen> {
     super.initState();
     _montoCtrl.addListener(_calcularValores);
     _entradaCtrl.addListener(_calcularValores);
-    _plazoCtrl.addListener(_calcularValores);
+    // _plazoCtrl.addListener(_calcularValores); // YA NO ES NECESARIO
+
+    debugPrint("🟠 [NEW CREDIT] usando instancia → hash: ${creditoHomeService.hashCode}");
   }
 
   @override
   void dispose() {
     _montoCtrl.dispose();
     _entradaCtrl.dispose();
-    _plazoCtrl.dispose();
+    // _plazoCtrl.dispose(); // YA NO ES NECESARIO
     super.dispose();
   }
 
@@ -58,7 +71,9 @@ class _NewCreditFinancialScreenState extends State<NewCreditFinancialScreen> {
   void _calcularValores() {
     double monto = double.tryParse(_montoCtrl.text) ?? 0.0;
     double entrada = double.tryParse(_entradaCtrl.text) ?? 0.0;
-    int plazo = int.tryParse(_plazoCtrl.text) ?? 0;
+
+    // 2. USAMOS EL VALOR DEL COMBO
+    int plazo = _plazoSeleccionado ?? 0;
 
     if (monto > 0 && plazo > 0) {
       double saldoFinanciar = monto - entrada;
@@ -87,6 +102,11 @@ class _NewCreditFinancialScreenState extends State<NewCreditFinancialScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_frecuenciaSeleccionada == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona una frecuencia')));
+      return;
+    }
+    // VALIDAMOS QUE HAYA SELECCIONADO UN PLAZO
+    if (_plazoSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona el plazo')));
       return;
     }
 
@@ -118,35 +138,57 @@ class _NewCreditFinancialScreenState extends State<NewCreditFinancialScreen> {
       final firebaseService = FirebaseService();
 
       // 1. SUBIR EVIDENCIAS
-      // String? urlContrato = await firebaseService.uploadImage(_fotoContrato!, 'contratos_nuevos');
-      // String? urlCelular = await firebaseService.uploadImage(_fotoCelular!, 'celulares_nuevos');
+      String? urlContrato = await firebaseService.uploadImage(_fotoContrato!, 'contratos_nuevos');
+      String? urlCelular = await firebaseService.uploadImage(_fotoCelular!, 'celulares_nuevos');
 
       // Simulación
       await Future.delayed(const Duration(seconds: 2));
-      String urlContrato = "https://mock.url/contrato.jpg";
-      String urlCelular = "https://mock.url/celular.jpg";
 
       if (mounted) Navigator.pop(context); // Cierra loading fotos
 
       // 2. CREAR DTO
       final credito = CreditoDTO(
         id: 0,
-        clienteId: widget.clienteId,
+        // clienteId: widget.clienteId, // Ajusta si lo necesitas
         montoTotal: double.parse(_montoCtrl.text),
         entrada: _entradaCtrl.text.isEmpty ? 0.0 : double.parse(_entradaCtrl.text),
-        plazoCuotas: int.parse(_plazoCtrl.text),
+
+        // 3. USAMOS EL PLAZO DEL COMBO PARA EL DTO
+        plazoCuotas: _plazoSeleccionado!,
+
         frecuenciaPago: _frecuenciaSeleccionada!,
         valorPorCuota: _valorCuota,
         montoPendiente: _totalPagar,
         diaPago: DateTime.now(),
-        estado: "PENDIENTE",
+        proximaCuota: _proximaCuota,
+        proximaCuotaStr: DateFormat('yyyy-MM-dd').format(_proximaCuota),
+        estado: "Pendiente",
+        tiendaId: widget.tiendaId,
+        fechaCreacion: DateTime.now().toUtc(),
+
         // Nuevos campos
         fotoContratoUrl: urlContrato,
         fotoCelularUrl: urlCelular,
       );
 
+      final response = await creditoHomeService.guardarCredito(credito);
+
+      debugPrint("✅ [NEW CREDIT] Crédito creado en backend:");
+      debugPrint("id: ${response.id}");
+      debugPrint("montoPendiente: ${response.montoPendiente}");
+      debugPrint("estado: ${response.estado}");
+      debugPrint("proximaCuotaStr: ${response.proximaCuotaStr}");
+
+
       // LLAMADA AL BACKEND:
-      // await creditoService.crearCredito(credito);
+
+      // 2️⃣ Refrescar la lista completa desde backend
+      await creditoHomeService.getCreditos(forceRefresh: true);
+      debugPrint("🟠 [NEW CREDIT] notifier → ${creditoHomeService.creditosNotifier.value?.length}");
+
+      debugPrint("🔄 ValueNotifier después de actualizar:");
+      debugPrint(creditoHomeService.creditosNotifier.value.toString());
+      await Future.delayed(const Duration(seconds: 2)); // Simulación
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -177,7 +219,8 @@ class _NewCreditFinancialScreenState extends State<NewCreditFinancialScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(c);
-              context.go('/home'); // Volver al inicio
+              context.go('/home', extra: true);
+              debugPrint("✅ [NEW CREDIT] Crédito creado, haciendo pop()");
             },
             child: const Text('FINALIZAR'),
           )
@@ -254,12 +297,27 @@ class _NewCreditFinancialScreenState extends State<NewCreditFinancialScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: CustomTextField(
-                      label: 'Plazo',
-                      controller: _plazoCtrl,
-                      keyboardType: TextInputType.number,
-                      icon: Icons.calendar_today,
-                      validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                    // 4. CAMBIO: DROPDOWN DE CUOTAS
+                    child: DropdownButtonFormField<int>(
+                      decoration: InputDecoration(
+                        labelText: 'Plazo (Cuotas)',
+                        prefixIcon: const Icon(Icons.calendar_view_week),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      value: _plazoSeleccionado,
+                      items: _opcionesCuotas.map((int value) {
+                        return DropdownMenuItem<int>(
+                          value: value,
+                          child: Text('$value cuotas'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _plazoSeleccionado = val;
+                          _calcularValores();
+                        });
+                      },
+                      validator: (v) => v == null ? 'Requerido' : null,
                     ),
                   ),
                   const SizedBox(width: 15),

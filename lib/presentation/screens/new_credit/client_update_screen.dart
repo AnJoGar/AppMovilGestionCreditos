@@ -8,10 +8,12 @@ import '../../../models/detalle_cliente_dto.dart';
 import '../../../presentation/widgets/custom_text_field.dart';
 import '../../../presentation/widgets/photo_upload_card.dart';
 import '../../../services/firebase_service.dart';
+import '../../../services/usuario_service.dart';
 
+import '../../../models/DetalleCLientePostDTO.dart';
 class ClientUpdateScreen extends StatefulWidget {
-  final int clienteId;
-  const ClientUpdateScreen({super.key, required this.clienteId});
+  //final int clienteId;
+  const ClientUpdateScreen({super.key, /*required this.clienteId*/});
 
   @override
   State<ClientUpdateScreen> createState() => _ClientUpdateScreenState();
@@ -85,31 +87,50 @@ class _ClientUpdateScreenState extends State<ClientUpdateScreen> {
     try {
       final firebaseService = FirebaseService();
 
+      // 1. SUBIR FOTOS (Simulado o Real)
+      // Descomenta las líneas reales cuando tengas el bucket listo
+       String? urlCliente = await firebaseService.uploadImage(_fotoCliente!, 'clientes');
+      //String? urlCelular = await firebaseService.uploadImage(_fotoCelular!, 'celulares');
+      //String? urlContrato = await firebaseService.uploadImage(_fotoContrato!, 'contratos');
+
+      // Simulación de delay
+      await Future.delayed(const Duration(seconds: 2));
+
+
+
+      if (mounted) Navigator.pop(context); // Cerrar diálogo
+
+      // 2. CREAR DTO DETALLE CLIENTE
+     
       // 1. SUBIR SOLO FOTO CLIENTE
       // String? urlCliente = await firebaseService.uploadImage(_fotoCliente!, 'clientes');
 
       // Simulación de delay
       await Future.delayed(const Duration(seconds: 2));
-      String urlCliente = "https://mock.url/cliente_update.jpg";
+     
 
-      if (mounted) Navigator.pop(context); // Cerrar diálogo
+     // if (mounted) Navigator.pop(context); // Cerrar diálogo
 
       // 2. CREAR DTO DETALLE CLIENTE LIMPIO
-      final detalleUpdate = DetalleClienteDTO(
+      final detalleUpdate = DetalleClientePostDTO(
         numeroCedula: _cedulaCtrl.text,
         nombreApellidos: _nombreCtrl.text,
         telefono: _telefonoCtrl.text,
         direccion: _direccionCtrl.text,
         fotoClienteUrl: urlCliente,
       );
+      final usuarioService = UsuarioService();
 
+    await usuarioService.actualizarDetalleClienteFotos(detalleUpdate);
       // 3. LLAMADA AL BACKEND (PUT /Cliente/{id})
       // await clienteService.actualizarDetalles(widget.clienteId, detalleUpdate);
 
       if (mounted) {
         setState(() => _isLoading = false);
+        // Avanzamos al Paso 2: Datos de Tienda
+        context.push('/new-credit-store', /*extra: widget.clienteId*/);
         // Avanzamos al Paso 2
-        context.push('/new-credit-store', extra: widget.clienteId);
+      //  context.push('/new-credit-store', extra: widget.clienteId);
       }
 
     } catch (e) {

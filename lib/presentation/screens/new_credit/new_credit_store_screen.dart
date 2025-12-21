@@ -3,10 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../../models/tienda_crear_dto.dart';
 import '../../../presentation/widgets/custom_text_field.dart';
+import '../../../services/tiendaService.dart';
+
 
 class NewCreditStoreScreen extends StatefulWidget {
-  final int clienteId;
-  const NewCreditStoreScreen({super.key, required this.clienteId});
+  //final int tiendaId;
+  //final int clienteId;
+  const NewCreditStoreScreen({super.key,/* required this.tiendaId*/});
 
   @override
   State<NewCreditStoreScreen> createState() => _NewCreditStoreScreenState();
@@ -29,12 +32,15 @@ class _NewCreditStoreScreenState extends State<NewCreditStoreScreen> {
     // 1. Crear DTO Tienda
     final tienda = TiendaCrearDTO(
       nombreTienda: _nombreTiendaCtrl.text,
-      codigoTienda: _codigoTiendaCtrl.text,
+      //codigoTienda: _codigoTiendaCtrl.text,
       nombreEncargado: _encargadoCtrl.text,
       telefono: _telefonoTiendaCtrl.text,
       direccion: _direccionTiendaCtrl.text,
-    );
 
+    );
+    final tiendaServicio = tiendaService();
+
+    final tiendaCreada = await tiendaServicio.GuardarTienda(tienda);
     // 2. LLAMADA AL BACKEND (POST /Tienda)
     // int tiendaId = await tiendaService.crearTienda(tienda);
     await Future.delayed(const Duration(seconds: 1)); // Simulación
@@ -46,7 +52,9 @@ class _NewCreditStoreScreenState extends State<NewCreditStoreScreen> {
       setState(() => _isLoading = false);
       // Avanzar al paso final: CRÉDITO + CALCULADORA
       // Pasamos clienteId y tiendaId (mapa de argumentos)
-      context.push('/new-credit-financial', extra: {'clienteId': widget.clienteId, 'tiendaId': mockTiendaId});
+      context.push('/new-credit-financial',
+        extra: tiendaCreada.id,
+        /*, extra: {'clienteId': widget.clienteId, 'tiendaId': mockTiendaId}*/);
     }
   }
 

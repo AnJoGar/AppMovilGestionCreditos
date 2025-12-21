@@ -1,26 +1,23 @@
+
 import 'package:intl/intl.dart';
 
 class CreditoDTO {
   int id;
   double montoTotal;
-  double entrada;
+  double entrada; // <--- Agregado
   int plazoCuotas;
   String frecuenciaPago;
   DateTime diaPago;
-
+  
+  
   double? valorPorCuota;
   double? montoPendiente;
 
   DateTime? proximaCuota;
   String? proximaCuotaStr;
   String? estado;
-  int clienteId;
-  int? tiendaId; 
+  //int clienteId;
   DateTime? fechaCreacion;
-
-  // --- NUEVOS CAMPOS ---
-  String? fotoContratoUrl;
-  String? fotoCelularUrl;
 
   CreditoDTO({
     this.id = 0,
@@ -34,14 +31,11 @@ class CreditoDTO {
     this.proximaCuota,
     this.proximaCuotaStr,
     this.estado,
-    this.clienteId = 0,
-    this.tiendaId = 0,
+    //this.clienteId = 0,
     this.fechaCreacion,
-    this.fotoContratoUrl, // Nuevo
-    this.fotoCelularUrl,  // Nuevo
   });
 
-  // ------------------- FROM JSON -------------------
+ // ------------------- FROM JSON -------------------
   factory CreditoDTO.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic date) {
       if (date is String) return DateTime.parse(date);
@@ -61,18 +55,13 @@ class CreditoDTO {
       proximaCuota: parseDate(json['ProximaCuota']),
       proximaCuotaStr: json['ProximaCuotaStr'],
       estado: json['Estado'],
-      clienteId: json['ClienteId'] ?? 0,
-      tiendaId: json['TiendaId'] ?? 0, // 
+      //clienteId: json['ClienteId'] ?? 0,
       fechaCreacion: parseDate(json['FechaCreacion']),
-      // Mapeo de nuevos campos
-      fotoContratoUrl: json['FotoContrato'],
-      fotoCelularUrl: json['FotoCelularEntregadoUrl'],
     );
   }
 
   // ------------------- TO JSON -------------------
   Map<String, dynamic> toJson() => {
-
        'Id': id,
       'Entrada': entrada,
       'MontoTotal': montoTotal,
@@ -85,11 +74,8 @@ class CreditoDTO {
       'ProximaCuotaStr': proximaCuotaStr ?? '',
       'Estado': estado ?? '',
       'FechaCreacion': fechaCreacion?.toUtc().toIso8601String(),
-      'ClienteId': clienteId,
-      'TiendaId': tiendaId,
-    'FotoContrato': fotoContratoUrl,
-    'FotoCelularEntregadoUrl': fotoCelularUrl,
+     // 'ClienteId': clienteId,
+         
    
       };
-
 }

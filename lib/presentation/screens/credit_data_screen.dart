@@ -5,14 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/register_provider.dart';
 import '../../models/credito_dto.dart';
-import '../../data/services/auth_service.dart';
 import '../widgets/custom_text_field.dart';
-import '../widgets/photo_upload_card.dart'; // IMPORTANTE
+import '../widgets/photo_upload_card.dart';
 import '../../services/UsuarioRegistroData.dart';
-import '../../models/cliente_dto.dart';
-import '../../models/enviar_codigo_dto.dart';
 import '../../services/ValidarCuenta.dart';
-import '../../services/firebase_service.dart'; // IMPORTANTE
+import '../../services/firebase_service.dart';
 
 class CreditDataScreen extends StatefulWidget {
   const CreditDataScreen({super.key});
@@ -25,16 +22,19 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
   UsuarioRegistroData registroData = UsuarioRegistroData();
   final _precioCtrl = TextEditingController();
   final _entradaCtrl = TextEditingController();
-  final _cuotasCtrl = TextEditingController();
+  // final _cuotasCtrl = TextEditingController(); // YA NO SE USA CONTROLADOR DE TEXTO
 
   String _frecuencia = 'Semanal';
   DateTime _fechaPago = DateTime.now();
+
+  // NUEVO: Variable para el combo de cuotas
+  int? _plazoSeleccionado;
+  final List<int> _opcionesCuotas = [3, 6, 9, 12, 15, 18, 24];
 
   double _montoFinanciar = 0;
   double _valorCuota = 0;
   DateTime _proximaCuota = DateTime.now();
 
-  // VARIABLES PARA LAS FOTOS
   File? _fotoContrato;
   File? _fotoCelular;
   bool _isUploading = false;
@@ -44,19 +44,19 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
     super.initState();
     _precioCtrl.addListener(_calcularValores);
     _entradaCtrl.addListener(_calcularValores);
-    _cuotasCtrl.addListener(_calcularValores);
   }
 
   @override
   void dispose() {
-    _precioCtrl.dispose(); _entradaCtrl.dispose(); _cuotasCtrl.dispose();
+    _precioCtrl.dispose(); _entradaCtrl.dispose();
     super.dispose();
   }
 
   void _calcularValores() {
     final precio = double.tryParse(_precioCtrl.text) ?? 0;
     final entrada = double.tryParse(_entradaCtrl.text) ?? 0;
-    final cuotas = int.tryParse(_cuotasCtrl.text) ?? 1;
+    // Usamos el valor seleccionado del combo
+    final cuotas = _plazoSeleccionado ?? 1;
 
     setState(() {
       _montoFinanciar = precio - entrada;
@@ -85,12 +85,15 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
   }
 
   void _finalizarRegistro() async {
-    if (_precioCtrl.text.isEmpty || _cuotasCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Define precio y cuotas')));
+    if (_precioCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Define el precio')));
+      return;
+    }
+    if (_plazoSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona el plazo de cuotas')));
       return;
     }
 
-    // 1. VALIDAR FOTOS
     if (_fotoContrato == null || _fotoCelular == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes subir fotos de Contrato y Celular'), backgroundColor: Colors.red));
       return;
@@ -98,35 +101,24 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
 
     setState(() => _isUploading = true);
 
-    // Dialogo de Carga
     showDialog(
       context: context, barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: const Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 20), Text("Subiendo evidencias...", style: TextStyle(fontWeight: FontWeight.bold))]),
-        ),
-      ),
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
       final firebaseService = FirebaseService();
-
-      // 2. SUBIR EVIDENCIAS
       String? urlContrato = await firebaseService.uploadImage(_fotoContrato!, 'contratos');
       String? urlCelular = await firebaseService.uploadImage(_fotoCelular!, 'celulares');
 
       if (urlContrato == null || urlCelular == null) throw Exception("Error al subir evidencias");
 
-      if (mounted) Navigator.pop(context); // Cierra loading de fotos
+      if (mounted) Navigator.pop(context);
 
-      // 3. CREAR DTO
       final credito = CreditoDTO(
         montoTotal: double.parse(_precioCtrl.text),
         entrada: double.tryParse(_entradaCtrl.text) ?? 0,
-        plazoCuotas: int.parse(_cuotasCtrl.text),
+        plazoCuotas: _plazoSeleccionado!, // Usamos la variable del combo
         frecuenciaPago: _frecuencia,
         diaPago: _fechaPago,
         valorPorCuota: _valorCuota,
@@ -135,7 +127,6 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
         proximaCuotaStr: DateFormat('yyyy-MM-dd').format(_proximaCuota),
         estado: 'Pendiente',
         fechaCreacion: DateTime.now().toUtc(),
-        // ASIGNAMOS LAS URLS
         fotoContratoUrl: urlContrato,
         fotoCelularUrl: urlCelular,
       );
@@ -143,7 +134,6 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
       final registerProvider = context.read<RegisterProvider>();
       registerProvider.setCredito(credito);
 
-      // 4. ENVIAR CODIGO DE VERIFICACIÓN
       final usuarioFinal = registerProvider.getUsuarioFinal();
       final correoUser = usuarioFinal.correo;
 
@@ -180,7 +170,6 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // --- RESUMEN ---
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: theme.primaryColor, borderRadius: BorderRadius.circular(15)),
@@ -199,12 +188,33 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
             ),
             const SizedBox(height: 30),
 
-            // --- CAMPOS ---
             CustomTextField(label: 'Precio Equipo (Total)', controller: _precioCtrl, keyboardType: TextInputType.number, icon: Icons.smartphone),
             const SizedBox(height: 15),
             CustomTextField(label: 'Entrada (Pago Inicial)', controller: _entradaCtrl, keyboardType: TextInputType.number, icon: Icons.monetization_on),
             const SizedBox(height: 15),
-            CustomTextField(label: 'Plazo (Cuotas)', controller: _cuotasCtrl, keyboardType: TextInputType.number, icon: Icons.calendar_view_week),
+
+            // --- CAMBIO: COMBOS DE CUOTAS ---
+            DropdownButtonFormField<int>(
+              decoration: InputDecoration(
+                labelText: 'Plazo (Cuotas)',
+                prefixIcon: const Icon(Icons.calendar_view_week),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              value: _plazoSeleccionado,
+              items: _opcionesCuotas.map((int value) {
+                return DropdownMenuItem<int>(
+                  value: value,
+                  child: Text('$value cuotas'),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _plazoSeleccionado = val;
+                  _calcularValores();
+                });
+              },
+            ),
+
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
               value: _frecuencia,
@@ -220,7 +230,6 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
               onTap: _seleccionarFecha,
             ),
 
-            // --- SECCIÓN EVIDENCIAS (NUEVO) ---
             const SizedBox(height: 30),
             const Divider(),
             const Text("EVIDENCIA DIGITAL", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -235,8 +244,7 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
 
             const SizedBox(height: 40),
             SizedBox(
-                width: double.infinity,
-                height: 55,
+                width: double.infinity, height: 55,
                 child: ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                     onPressed: _finalizarRegistro,
