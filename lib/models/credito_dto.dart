@@ -15,12 +15,20 @@ class CreditoDTO {
   String? proximaCuotaStr;
   String? estado;
   int clienteId;
-  int? tiendaId; 
   DateTime? fechaCreacion;
+  String? fechaCreacionStr; // <--- NUEVO CAMPO STRING
+  int? tiendaId;
 
-  // --- NUEVOS CAMPOS ---
+  // --- EVIDENCIAS ---
   String? fotoContratoUrl;
   String? fotoCelularUrl;
+
+  // --- DATOS EQUIPO & ESTADO ---
+  String? marca;
+  String? modelo;
+  double abonadoTotal;
+  double abonadoCuota;
+  String? estadoCuota;
 
   CreditoDTO({
     this.id = 0,
@@ -35,13 +43,18 @@ class CreditoDTO {
     this.proximaCuotaStr,
     this.estado,
     this.clienteId = 0,
-    this.tiendaId = 0,
     this.fechaCreacion,
-    this.fotoContratoUrl, // Nuevo
-    this.fotoCelularUrl,  // Nuevo
+    this.fechaCreacionStr, // Nuevo en constructor
+    this.tiendaId,
+    this.fotoContratoUrl,
+    this.fotoCelularUrl,
+    this.marca,
+    this.modelo,
+    this.abonadoTotal = 0.0,
+    this.abonadoCuota = 0.0,
+    this.estadoCuota,
   });
 
-  // ------------------- FROM JSON -------------------
   factory CreditoDTO.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic date) {
       if (date is String) return DateTime.parse(date);
@@ -62,34 +75,44 @@ class CreditoDTO {
       proximaCuotaStr: json['ProximaCuotaStr'],
       estado: json['Estado'],
       clienteId: json['ClienteId'] ?? 0,
-      tiendaId: json['TiendaId'] ?? 0, // 
       fechaCreacion: parseDate(json['FechaCreacion']),
-      // Mapeo de nuevos campos
+      fechaCreacionStr: json['fechaCreacionStr'], // Mapeo String
+      tiendaId: json['TiendaId'],
+
       fotoContratoUrl: json['FotoContrato'],
       fotoCelularUrl: json['FotoCelularEntregadoUrl'],
+
+      marca: json['Marca'],
+      modelo: json['Modelo'],
+      abonadoTotal: (json['AbonadoTotal'] ?? 0).toDouble(),
+      abonadoCuota: (json['AbonadoCuota'] ?? 0).toDouble(),
+      estadoCuota: json['EstadoCuota'],
     );
   }
 
-  // ------------------- TO JSON -------------------
   Map<String, dynamic> toJson() => {
+    'Id': id,
+    'Entrada': entrada,
+    'MontoTotal': montoTotal,
+    'MontoPendiente': montoPendiente ?? 0,
+    'PlazoCuotas': plazoCuotas,
+    'FrecuenciaPago': frecuenciaPago,
+    'DiaPago': diaPago.toUtc().toIso8601String(),
+    'ValorPorCuota': valorPorCuota ?? 0,
+    'ProximaCuota': proximaCuota?.toUtc().toIso8601String(),
+    'ProximaCuotaStr': proximaCuotaStr ?? '',
+    'Estado': estado ?? '',
+    'FechaCreacion': fechaCreacion?.toUtc().toIso8601String(),
+    'fechaCreacionStr': fechaCreacionStr, // Envío String
+    'ClienteId': clienteId,
+    'TiendaId': tiendaId,
 
-       'Id': id,
-      'Entrada': entrada,
-      'MontoTotal': montoTotal,
-      'MontoPendiente': montoPendiente ?? 0,
-      'PlazoCuotas': plazoCuotas,
-      'FrecuenciaPago': frecuenciaPago,
-      'DiaPago': diaPago.toUtc().toIso8601String(),
-      'ValorPorCuota': valorPorCuota ?? 0,
-      'ProximaCuota':  proximaCuota?.toUtc().toIso8601String(),
-      'ProximaCuotaStr': proximaCuotaStr ?? '',
-      'Estado': estado ?? '',
-      'FechaCreacion': fechaCreacion?.toUtc().toIso8601String(),
-      'ClienteId': clienteId,
-      'TiendaId': tiendaId,
     'FotoContrato': fotoContratoUrl,
     'FotoCelularEntregadoUrl': fotoCelularUrl,
-   
-      };
-
+    'Marca': marca,
+    'Modelo': modelo,
+    'AbonadoTotal': abonadoTotal,
+    'AbonadoCuota': abonadoCuota,
+    'EstadoCuota': estadoCuota,
+  };
 }
