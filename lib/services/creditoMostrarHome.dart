@@ -13,7 +13,7 @@ class creditoMostrarHome {
    final String baseUrl = "https://apicredito2-8.onrender.com/api";
   final String baseUrl3 = "https://apicredito2-8.onrender.com/api";
   final String baseUrl2 = "https://apicredito2-8.onrender.com/api";
-  final String baseUrl1 = "https://apicredito2-8.onrender.com/api";
+  final String baseUrl1 = "https://apicredito2-8.onrender.com";
   final storage = const FlutterSecureStorage();
   // WebSocket
   late HubConnection _connection;

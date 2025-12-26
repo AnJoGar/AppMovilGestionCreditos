@@ -82,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 3. EJECUTAR RASTREO EN SEGUNDO PLANO (Sin await para no bloquear la UI)
     _locationService.sendCurrentLocation();
+     
   }
 
   // 🔴 FUNCIÓN NUEVA: Obtiene el conteo del servicio

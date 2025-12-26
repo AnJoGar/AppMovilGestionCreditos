@@ -1,7 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'dart:convert';
 class LocationService {
   // Usamos la misma base URL que tus otros servicios
   final String baseUrl = "https://apicredito2-8.onrender.com/api";
@@ -12,7 +12,8 @@ class LocationService {
     try {
       final position = await _determinePosition();
       if (position != null) {
-        await _sendToApi(position);
+       // await _sendToApi(position);
+        await _sendToApiPost(position);
       }
     } catch (e) {
       print("⚠️ Error en servicio de ubicación: $e");
@@ -81,6 +82,45 @@ class LocationService {
       }
     } catch (e) {
       print("❌ Error de conexión al enviar ubicación: $e");
+    }
+  }
+
+
+    /// Enviar ubicación al API (POST)
+  Future<void> _sendToApiPost(Position position) async {
+    final token = await storage.read(key: 'jwt_token');
+    if (token == null) {
+      print("❌ Token no encontrado");
+      return;
+    }
+
+    final url = Uri.parse('$baseUrl/Ubicacion/Registrar');
+
+    final body = {
+      "Latitud": position.latitude,
+      "Longitud": position.longitude,
+    };
+
+    try {
+      print("📍 Enviando ubicación: ${position.latitude}, ${position.longitude}");
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ Ubicación guardada correctamente");
+      } else {
+        print("❌ Error al guardar ubicación: ${response.statusCode}");
+        print(response.body);
+      }
+    } catch (e) {
+      print("❌ Error de conexión: $e");
     }
   }
 }
