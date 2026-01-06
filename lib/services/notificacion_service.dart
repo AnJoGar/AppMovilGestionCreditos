@@ -8,7 +8,7 @@ import 'package:signalr_core/signalr_core.dart';
 class NotificacionService {
   final String baseUrl1 ="https://apicredito2-ximx.onrender.com/api";
   final String baseUrl= "https://apicredito2-ximx.onrender.com/api";
-   final String baseUrl11="https://apicredito2-ximx.onrender.com/api";
+   final String baseUrl11="https://apicredito2-ximx.onrender.com";
  final storage = const FlutterSecureStorage();
 
   late HubConnection _connection;

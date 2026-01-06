@@ -345,11 +345,11 @@ class CreditSummaryCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _InfoItem(
+              /*_InfoItem(
                 label: 'Abonado Cuota',
                 value: '\$${credito.abonadoCuota.toStringAsFixed(2)}',
                 icon: Icons.price_check, // Icono diferente para distinguir
-              ),
+              ),*/
              /* Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [

@@ -133,7 +133,7 @@ _historialService.connectSignalR();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crédito de CELLCOMPAY', style: TextStyle(color: Colors.white)),
+        title: const Text('Resumen de crédito', style: TextStyle(color: Colors.white)),
         backgroundColor: theme.primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [

@@ -119,6 +119,8 @@ class CreditoDTO {
 
 class CreditoDTO {
   int id;
+  bool? esVentaContado;
+  String? metodoPago;
   double montoTotal;
   double entrada;
   int plazoCuotas;
@@ -153,6 +155,8 @@ class CreditoDTO {
 
   CreditoDTO({
     this.id = 0,
+    this.esVentaContado = false, // 🔥 Por defecto es crédito
+    this.metodoPago,
     required this.montoTotal,
     this.entrada = 0.0,
     required this.plazoCuotas,
@@ -190,6 +194,8 @@ class CreditoDTO {
 
     return CreditoDTO(
       id: json['id'] ?? 0,
+      esVentaContado: json['esVentaContado'] ?? false,
+      metodoPago: json['metodoPago'],
       montoTotal: (json['montoTotal'] ?? 0).toDouble(),
       entrada: (json['entrada'] ?? 0).toDouble(),
       plazoCuotas: json['plazoCuotas'] ?? 0,
@@ -222,6 +228,8 @@ class CreditoDTO {
   // ------------------- TO JSON -------------------
   Map<String, dynamic> toJson() => {
     'Id': id,
+    'EsVentaContado': esVentaContado, // 🔥 Enviamos el booleano al servidor
+    'MetodoPago': metodoPago,
     'Entrada': entrada,
     'MontoTotal': montoTotal,
     'MontoPendiente': montoPendiente ?? 0,

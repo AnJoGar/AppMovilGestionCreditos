@@ -33,8 +33,14 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
   final _cuotasCtrl = TextEditingController();
   final _marcaCtrl = TextEditingController();
   final _modeloCtrl = TextEditingController();
+  String _tipoVenta = 'Crédito'; // 🔥 NUEVA VARIABLE
+final List<String> _tiposVenta = ['Crédito', 'Contado'];
+
   // NUEVO: Controlador IMEI
   final _imeiCtrl = TextEditingController();
+
+  bool _esVentaContado = false; // 🔥 NUEVA VARIABLE
+String _metodoPago = 'Efectivo'; // Para saber cómo pagó el contado
 
   // ✅ NUEVO CONTROLADOR PARA CRÉDITO
   final _propietarioCreditoCtrl = TextEditingController();
@@ -81,6 +87,20 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
   }
 
   void _calcularValores() {
+
+
+ bool esContado = _tipoVenta == 'Contado';
+if (esContado) {
+
+   
+    // Si es contado, forzamos valores
+    _entradaCtrl.text = _precioCtrl.text;
+    _cuotasCtrl.text = '1';
+    _frecuencia = 'Mensual'; // Valor por defecto técnico
+  }
+
+
+
     final precio = double.tryParse(_precioCtrl.text) ?? 0;
     final entrada = double.tryParse(_entradaCtrl.text) ?? 0;
     final cuotas = int.tryParse(_cuotasCtrl.text) ?? 1;
@@ -90,6 +110,8 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
       if (_montoFinanciar < 0) _montoFinanciar = 0;
       _valorCuota = (cuotas > 0) ? _montoFinanciar / cuotas : 0;
       _proximaCuota = _calcularProximaFecha(_fechaPago, _frecuencia);
+
+        _esVentaContado = esContado;
     });
   }
 
@@ -204,6 +226,9 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
 
       // 3. CREAR DTO
       final credito = CreditoDTO(
+
+        esVentaContado: _esVentaContado, // 🔥 CAMPO NUEVO
+  metodoPago: _esVentaContado ? 'Al Contado' : 'Efectivo', // 🔥 CAMPO NUEVO
         montoTotal: double.parse(_precioCtrl.text),
         entrada: double.tryParse(_entradaCtrl.text) ?? 0,
         plazoCuotas: int.parse(_cuotasCtrl.text) ,//_plazoSeleccionado!,
@@ -327,152 +352,306 @@ class _CreditDataScreenState extends State<CreditDataScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Paso 4: Crédito y Evidencias')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // --- RESUMEN ---
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: theme.primaryColor, borderRadius: BorderRadius.circular(15)),
-              child: Column(
-                children: [
-                  const Text('Saldo a Financiar', style: TextStyle(color: Colors.white70)),
-                  Text('\$${_montoFinanciar.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
+@override
+Widget build(BuildContext context) {
+  final theme = Theme.of(context);
+  return Scaffold(
+    appBar: AppBar(title: const Text('Paso 4: Crédito y Evidencias')),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          // --- RESUMEN ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              // 🔥 Cambiar color según tipo de venta
+              color: _tipoVenta == 'Contado' ? Colors.green : theme.primaryColor,
+              borderRadius: BorderRadius.circular(15)
+            ),
+            child: Column(
+              children: [
+                // 🔥 Título condicional mejorado
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _tipoVenta == 'Contado' ? Icons.payments : Icons.credit_card,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _tipoVenta == 'Contado' ? 'VENTA AL CONTADO' : 'VENTA A CRÉDITO',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1
+                      )
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _tipoVenta == 'Contado' ? 'Monto Total' : 'Saldo a Financiar',
+                  style: const TextStyle(color: Colors.white70, fontSize: 14)
+                ),
+                Text(
+                  '\$${_tipoVenta == 'Contado' ? (_precioCtrl.text.isEmpty ? '0.00' : _precioCtrl.text) : _montoFinanciar.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)
+                ),
+                
+                // 🔥 Solo mostrar detalles si es Crédito
+                if (_tipoVenta == 'Crédito') ...[
                   const SizedBox(height: 10),
                   const Divider(color: Colors.white24),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text('Cuota: \$${_valorCuota.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 16)),
-                    Text('Prox: ${DateFormat('dd/MM').format(_proximaCuota)}', style: const TextStyle(color: Colors.greenAccent)),
-                  ])
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Cuota: \$${_valorCuota.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                      Text('Prox: ${DateFormat('dd/MM').format(_proximaCuota)}', style: const TextStyle(color: Colors.greenAccent)),
+                    ]
+                  )
+                ] else ...[
+                  // Si es contado, mostrar mensaje
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text('Pago Completo', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
+                  )
                 ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ✅ CAMPO PROPIETARIO CREDITO
+          CustomTextField(
+            label: 'Propietario del Crédito',
+            controller: _propietarioCreditoCtrl,
+            icon: Icons.person_pin,
+            validator: (v) => v!.isEmpty ? 'Requerido' : null,
+          ),
+          const SizedBox(height: 15),
+
+          // --- TIPO PRODUCTO Y MARCA ---
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(labelText: 'Tipo Producto', border: OutlineInputBorder()),
+                  value: _tipoProducto,
+                  items: _tiposProducto.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  onChanged: (val) {
+                    setState(() => _tipoProducto = val!);
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: CustomTextField(label: 'Marca', controller: _marcaCtrl, icon: Icons.branding_watermark)),
+            ],
+          ),
+          const SizedBox(height: 15),
+
+          // --- MODELO y CAPACIDAD ---
+          Row(
+            children: [
+              Expanded(flex: 2, child: CustomTextField(label: 'Modelo', controller: _modeloCtrl, icon: Icons.devices)),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 1,
+                child: CustomTextField(
+                  label: 'Cap.',
+                  controller: _capacidadCtrl,
+                  keyboardType: TextInputType.number,
+                  suffixText: 'GB',
+                  validator: (v) {
+                    if (v != null && v.isNotEmpty) {
+                      final n = int.tryParse(v);
+                      if (n == null || n > 2000) return 'Max 1TB';
+                    }
+                    return null;
+                  },
+                )
+              ),
+            ],
+          ),
+
+          // --- IMEI (Si es teléfono) ---
+          if (_tipoProducto == 'Teléfono') ...[
+            const SizedBox(height: 15),
+            CustomTextField(label: 'IMEI', controller: _imeiCtrl, icon: Icons.qr_code),
+          ],
+
+          const SizedBox(height: 15),
+
+          // 🔥 REEMPLAZAR EL SWITCH POR UN DROPDOWN
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _tipoVenta == 'Contado' 
+                    ? [Colors.green.shade50, Colors.green.shade100]
+                    : [Colors.blue.shade50, Colors.blue.shade100],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _tipoVenta == 'Contado' ? Colors.green : Colors.blue,
+                width: 2
               ),
             ),
-            const SizedBox(height: 20),
-
-            // ✅ CAMPO PROPIETARIO CREDITO (PRIMERA OPCIÓN)
-            CustomTextField(
-              label: 'Propietario del Crédito',
-              controller: _propietarioCreditoCtrl,
-              icon: Icons.person_pin,
-              validator: (v) => v!.isEmpty ? 'Requerido' : null,
-            ),
-            const SizedBox(height: 15),
-
-            // --- NUEVO: TIPO PRODUCTO Y MARCA ---
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo Producto', border: OutlineInputBorder()),
-                    value: _tipoProducto,
-                    items: _tiposProducto.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (val) {
-                      setState(() => _tipoProducto = val!);
-                    },
+            child: DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: 'Tipo de Venta',
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _tipoVenta == 'Contado' ? Colors.green.shade800 : Colors.blue.shade800
+                ),
+                prefixIcon: Icon(
+                  _tipoVenta == 'Contado' ? Icons.flash_on : Icons.credit_card,
+                  color: _tipoVenta == 'Contado' ? Colors.green : Colors.blue,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              value: _tipoVenta,
+              items: _tiposVenta.map((tipo) {
+                return DropdownMenuItem(
+                  value: tipo,
+                  child: Row(
+                    children: [
+                      Icon(
+                        tipo == 'Contado' ? Icons.payments : Icons.credit_card,
+                        size: 20,
+                        color: tipo == 'Contado' ? Colors.green : Colors.blue,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        tipo == 'Contado' ? 'Venta al Contado' : 'Venta a Crédito',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: tipo == 'Contado' ? Colors.green.shade800 : Colors.blue.shade800,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: CustomTextField(label: 'Marca', controller: _marcaCtrl, icon: Icons.branding_watermark)),
-              ],
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _tipoVenta = val!;
+                  if (_tipoVenta == 'Contado') {
+                    _cuotasCtrl.text = '1';
+                    if (_precioCtrl.text.isNotEmpty) {
+                      _entradaCtrl.text = _precioCtrl.text;
+                    }
+                    _frecuencia = 'Mensual';
+                  } else {
+                    _entradaCtrl.clear();
+                    _cuotasCtrl.text = '3';
+                  }
+                  _calcularValores();
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 15),
+
+          // --- PRECIO EQUIPO (SIEMPRE VISIBLE) ---
+          CustomTextField(
+            label: 'Precio Equipo (Total)',
+            controller: _precioCtrl,
+            keyboardType: TextInputType.number,
+            icon: Icons.monetization_on_outlined
+          ),
+          const SizedBox(height: 15),
+
+          // 🔥 CAMPOS OCULTOS SI ES CONTADO
+          if (_tipoVenta == 'Crédito') ...[
+            // ENTRADA
+            CustomTextField(
+              label: 'Entrada (Pago Inicial)',
+              controller: _entradaCtrl,
+              keyboardType: TextInputType.number,
+              icon: Icons.monetization_on
             ),
             const SizedBox(height: 15),
 
-            // --- FILA 1: MODELO y CAPACIDAD ---
-            Row(
-              children: [
-                Expanded(flex: 2, child: CustomTextField(label: 'Modelo', controller: _modeloCtrl, icon: Icons.devices)),
-
-                const SizedBox(width: 10),
-
-                Expanded(
-                    flex: 1,
-                    child: CustomTextField(
-                      label: 'Cap.',
-                      controller: _capacidadCtrl,
-                      keyboardType: TextInputType.number,
-                      suffixText: 'GB',
-                      validator: (v) {
-                        if (v != null && v.isNotEmpty) {
-                          final n = int.tryParse(v);
-                          if (n == null || n > 1000) return 'Max 1TB';
-                        }
-                        return null;
-                      },
-                    )
-                ),
-              ],
+            // PLAZO
+            CustomTextField(
+              label: 'Plazo (Cuotas)',
+              controller: _cuotasCtrl,
+              keyboardType: TextInputType.number,
+              icon: Icons.calendar_view_week
             ),
-
-            // --- FILA 2: IMEI (Si es teléfono, abajo) ---
-            if (_tipoProducto == 'Teléfono') ...[
-              const SizedBox(height: 15),
-              CustomTextField(label: 'IMEI', controller: _imeiCtrl, icon: Icons.qr_code),
-            ],
-
-            const SizedBox(height: 15),
-
-            // --- CAMPOS ---
-            // ✏️ CAMBIO ESTÉTICO: Ícono más general
-            CustomTextField(label: 'Precio Equipo (Total)', controller: _precioCtrl, keyboardType: TextInputType.number, icon: Icons.monetization_on_outlined),
-            const SizedBox(height: 15),
-            CustomTextField(label: 'Entrada (Pago Inicial)', controller: _entradaCtrl, keyboardType: TextInputType.number, icon: Icons.monetization_on),
-            const SizedBox(height: 15),
-
-
-            CustomTextField(label: 'Plazo (Cuotas)', controller: _cuotasCtrl, keyboardType: TextInputType.number, icon: Icons.calendar_view_week),
             const SizedBox(height: 20),
+
+            // FRECUENCIA
             DropdownButtonFormField<String>(
               value: _frecuencia,
-              decoration: InputDecoration(labelText: 'Frecuencia de Pago', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-              items: ['Semanal', 'Quincenal', 'Mensual'].map((String value) => DropdownMenuItem<String>(value: value, child: Text(value))).toList(),
-              onChanged: (val) { setState(() { _frecuencia = val!; _calcularValores(); }); },
+              decoration: InputDecoration(
+                labelText: 'Frecuencia de Pago',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+              ),
+              items: ['Semanal', 'Quincenal', 'Mensual']
+                  .map((String value) => DropdownMenuItem<String>(value: value, child: Text(value)))
+                  .toList(),
+              onChanged: (val) {
+                setState(() {
+                  _frecuencia = val!;
+                  _calcularValores();
+                });
+              },
             ),
             const SizedBox(height: 20),
+
+            // FECHA DE INICIO
             ListTile(
-              title: const Text('Fecha de Inicio / Pago'), subtitle: Text(DateFormat('dd MMMM yyyy').format(_fechaPago)),
+              title: const Text('Fecha de Inicio / Pago'),
+              subtitle: Text(DateFormat('dd MMMM yyyy').format(_fechaPago)),
               trailing: const Icon(Icons.calendar_today),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.withOpacity(0.5))),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.grey.withOpacity(0.5))
+              ),
               onTap: _seleccionarFecha,
             ),
 
-            // 🟢 AQUÍ INSERTAMOS LA CALCULADORA VISUAL
+            // CALCULADORA VISUAL
             _buildCalculatorVisualizer(theme),
-
-            const SizedBox(height: 30),
-
-            /* 📸 SECCIÓN EVIDENCIAS COMENTADA
-            // --- SECCIÓN EVIDENCIAS (NUEVO) ---
-            const Divider(),
-            const Text("EVIDENCIA DIGITAL", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-            const SizedBox(height: 15),
-            Row(
-              children: [
-                Expanded(child: PhotoUploadCard(label: 'Foto Contrato *', onImageSelected: (f) => _fotoContrato = f)),
-                const SizedBox(width: 10),
-                Expanded(child: PhotoUploadCard(label: 'Foto Celular *', onImageSelected: (f) => _fotoCelular = f)),
-              ],
-            ),
-            */
-
-            const SizedBox(height: 40),
-            SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    onPressed: _finalizarRegistro,
-                    child: const Text('FINALIZAR Y VERIFICAR', style: TextStyle(fontSize: 16))
-                )
-            ),
           ],
-        ),
+
+          const SizedBox(height: 40),
+          SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _tipoVenta == 'Contado' ? Colors.green : Colors.blue
+              ),
+              onPressed: _finalizarRegistro,
+              child: Text(
+                _tipoVenta == 'Contado' ? 'REGISTRAR VENTA AL CONTADO' : 'FINALIZAR Y VERIFICAR',
+                style: const TextStyle(fontSize: 16, color: Colors.white)
+              )
+            )
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

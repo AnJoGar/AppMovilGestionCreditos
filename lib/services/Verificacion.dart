@@ -46,7 +46,7 @@ Future<ForgotPasswordDTO?> forgotPassword(ForgotPasswordDTO dto) async {
   // =============== RESET PASSWORD ===============
 
   Future<String?> resetPassword(ResetPasswordDTO dto) async {
-  final url = Uri.parse('https://apicredito2-8.onrender.com/api/Password/reset-password');
+  final url = Uri.parse('https://apicredito2-ximx.onrender.com/api/Password/reset-password');
   print('--- RESET PASSWORD ---');
   print('URL: $url');
   print('Datos enviados: ${dto.toJson()}');
